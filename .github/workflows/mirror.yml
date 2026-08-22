@@ -1,0 +1,74 @@
+name: Mirror Device Repository
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: device-repository-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Mirror branches and tags
+        env:
+          SOURCE_TOKEN: ${{ github.token }}
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ATOMGIT_TOKEN"
+          test -n "$GITEE_TOKEN"
+
+          cat > "$RUNNER_TEMP/git-askpass" <<'SCRIPT'
+          #!/usr/bin/env bash
+          case "${1:-}" in
+            *Username*)
+              printf '%s\n' "${MIRROR_USER:?}"
+              ;;
+            *)
+              printf '%s\n' "${MIRROR_TOKEN:?}"
+              ;;
+          esac
+          SCRIPT
+
+          chmod 700 "$RUNNER_TEMP/git-askpass"
+          export GIT_ASKPASS="$RUNNER_TEMP/git-askpass"
+          export GIT_TERMINAL_PROMPT=0
+
+          mirror_dir="$RUNNER_TEMP/device-repository.git"
+          git init --bare "$mirror_dir"
+
+          git -C "$mirror_dir" remote add source \
+            "https://github.com/${GITHUB_REPOSITORY}.git"
+
+          MIRROR_USER=x-access-token \
+          MIRROR_TOKEN="$SOURCE_TOKEN" \
+          git -C "$mirror_dir" fetch --prune source \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          git -C "$mirror_dir" remote add atomgit \
+            "https://atomgit.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository.git"
+
+          MIRROR_USER=LingMoe404 \
+          MIRROR_TOKEN="$ATOMGIT_TOKEN" \
+          git -C "$mirror_dir" push --prune atomgit \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          git -C "$mirror_dir" remote add gitee \
+            "https://gitee.com/LingMoe404/magical-girl-case-mirror-device-repository.git"
+
+          MIRROR_USER=LingMoe404 \
+          MIRROR_TOKEN="$GITEE_TOKEN" \
+          git -C "$mirror_dir" push --prune gitee \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
