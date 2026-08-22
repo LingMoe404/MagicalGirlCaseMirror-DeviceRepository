@@ -1,0 +1,20 @@
+# Generated files
+node_modules/
+dist/
+bin/
+obj/
+
+# Local tooling and caches
+.vscode/
+.idea/
+*.user
+*.suo
+*.tmp
+*.log
+
+# Local package staging and signing material
+staging/
+.local/
+private/
+*.key
+*.pem
