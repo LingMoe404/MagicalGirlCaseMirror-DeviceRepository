@@ -33,7 +33,7 @@ signatures/            # 仓库和包签名
 
 GitHub 是唯一权威编辑源。签名完成后，同一提交由镜像工作流同步到 Gitee；镜像不能独立编辑设备包。
 
-三个官方订阅地址：
+两端官方订阅地址：
 
 - GitHub：`https://raw.githubusercontent.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository/main/repository.json`
 - Gitee：`https://gitee.com/LingMoe404/magical-girl-case-mirror-device-repository/raw/main/repository.json`
