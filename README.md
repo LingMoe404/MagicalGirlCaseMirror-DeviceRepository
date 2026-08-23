@@ -18,11 +18,11 @@ MagicalGirlCaseMirror 的独立 RGB 资源仓库。
 
 ## 安全边界
 
-- 设备资源只声明设备、LED 模型、拓扑和已有 Host Driver 的引用。
-- 不执行包内 JavaScript、HTML、WebAssembly、DLL 或 EXE。
+- 设备资源只声明设备 Profile、RGB 模型、Canvas、拓扑和已有 Host Driver 的引用。
+- 不执行资源内的 JavaScript、HTML、WebAssembly、DLL 或 EXE。
 - 新的 USB、HID、WinUSB 或其他设备协议必须在 MagicalGirlCaseMirror 主项目中实现并经过审查和实机验证。
 - 不直接收录第三方软件、SDK、运行时、安装包或未经确认授权的资源。
-- 每个外部来源包必须保留作者、来源、许可证和必要的再分发说明。
+- 每个外部来源资源必须保留作者、来源、许可证和必要的再分发说明。
 
 ## 目录约定
 

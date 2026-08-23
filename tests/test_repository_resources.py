@@ -202,6 +202,13 @@ class RepositoryResourceTests(unittest.TestCase):
                 self.assertTrue(entry[field], field)
             self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
 
+    def test_active_contract_docs_use_resource_only_terminology(self):
+        for path in (ROOT / "README.md", ROOT / "licenses" / "CONTENT-POLICY.md"):
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("packages/", text, path)
+            self.assertNotIn(".mgpack.json", text, path)
+            self.assertNotRegex(text, r"(?i)\bpackage\b", path)
+
     def test_release_verifier_rejects_package_collection_before_key_use(self):
         signer = load_signer()
         with tempfile.TemporaryDirectory() as directory:
