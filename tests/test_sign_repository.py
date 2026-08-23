@@ -73,6 +73,21 @@ class SignedRepositoryTests(unittest.TestCase):
             self.assert_verified(public_key, package, package_signature)
             self.assert_verified_bytes(public_key, root / "repository.json", base64.b64decode(first_signature.strip(), validate=True))
             load_signer().verify_release_artifacts(root, public_key)
+            verify_result = subprocess.run(
+                [
+                    "python",
+                    str(SCRIPT),
+                    "--repository-root",
+                    str(root),
+                    "--verify-release",
+                    "--public-key",
+                    str(public_key),
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.assertEqual(verify_result.returncode, 0, verify_result.stderr.decode())
 
             self.run_sign(root, private_key)
             self.assertEqual(first_index, (root / "repository.json").read_bytes())

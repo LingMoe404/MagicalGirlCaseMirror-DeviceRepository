@@ -266,7 +266,6 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.repository_root.resolve()
-    private_key = args.private_key.resolve()
     if args.verify_release:
         public_key = args.public_key.resolve() if args.public_key else root / "official-public-key.pem"
         if not public_key.is_file():
