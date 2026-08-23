@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 from urllib.parse import urlsplit
@@ -16,6 +17,11 @@ from urllib.parse import urlsplit
 
 SIGNATURE_FILE = "repository.json.sig"
 PACKAGE_SUFFIX = ".mgpack.json"
+RESOURCE_DIRECTORIES = {
+    "device": "devices",
+    "rgb-model": "models",
+    "canvas": "canvases",
+}
 RESOURCE_SUFFIXES = {
     "device": ".mgdevice.json",
     "rgb-model": ".mgmodel.json",
@@ -78,11 +84,17 @@ def decode_signature(value: object) -> bytes | None:
         return None
 
 
+def _reject_encoded_path(path: str) -> None:
+    if "%" in path:
+        raise ValueError("downloadUrl must not contain percent-encoded path syntax")
+
+
 def resolve_package(root: Path, download_url: object) -> Path:
     if not isinstance(download_url, str) or not download_url:
         raise ValueError("package downloadUrl must be a non-empty relative path")
     if "\\" in download_url or "?" in download_url or "#" in download_url:
         raise ValueError("package downloadUrl contains a forbidden delimiter")
+    _reject_encoded_path(download_url)
     parsed = urlsplit(download_url)
     if parsed.scheme or parsed.netloc or not parsed.path or parsed.path.startswith("/"):
         raise ValueError("package downloadUrl must be relative")
@@ -107,14 +119,22 @@ def resolve_resource(root: Path, download_url: object, resource_type: object) ->
         raise ValueError("resource resourceType is unsupported")
     if "\\" in download_url or "?" in download_url or "#" in download_url:
         raise ValueError("resource downloadUrl contains a forbidden delimiter")
+    _reject_encoded_path(download_url)
     parsed = urlsplit(download_url)
     if parsed.scheme or parsed.netloc or not parsed.path or parsed.path.startswith("/"):
         raise ValueError("resource downloadUrl must be relative")
     parts = parsed.path.split("/")
     if any(part in ("", ".", "..") for part in parts):
         raise ValueError("resource downloadUrl contains unsafe path segments")
-    if not parsed.path.endswith(RESOURCE_SUFFIXES[resource_type]):
+    expected_directory = RESOURCE_DIRECTORIES[resource_type]
+    expected_suffix = RESOURCE_SUFFIXES[resource_type]
+    if parts[0] != expected_directory or len(parts) != 2:
+        raise ValueError("resource downloadUrl must use the canonical resource directory")
+    if not parsed.path.endswith(expected_suffix):
         raise ValueError("resource downloadUrl has an invalid extension")
+    stem = parsed.path.removeprefix(f"{expected_directory}/")[:-len(expected_suffix)]
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", stem):
+        raise ValueError("resource downloadUrl has an invalid resource file name")
     candidate = (root / parsed.path).resolve()
     root_resolved = root.resolve()
     if os.path.commonpath([str(root_resolved), str(candidate)]) != str(root_resolved):
@@ -122,6 +142,47 @@ def resolve_resource(root: Path, download_url: object, resource_type: object) ->
     if not candidate.is_file():
         raise FileNotFoundError(f"resource file does not exist: {parsed.path}")
     return candidate
+
+
+def verify_release_artifacts(root: Path, public_key: Path) -> None:
+    repository_path = root / "repository.json"
+    signature_path = root / SIGNATURE_FILE
+    if not repository_path.is_file():
+        raise ValueError("formal release requires repository.json")
+    repository_bytes = repository_path.read_bytes()
+    document = json.loads(repository_bytes)
+    for collection_name in ("packages", "resources"):
+        for entry in document.get(collection_name, []):
+            if entry.get("signature") == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
+                raise ValueError("formal release cannot contain signature placeholder")
+    if not signature_path.is_file():
+        raise ValueError("formal release requires repository.json.sig")
+    try:
+        repository_signature = base64.b64decode(signature_path.read_text(encoding="ascii").strip(), validate=True)
+    except (ValueError, UnicodeError) as error:
+        raise ValueError("repository signature is not valid Base64") from error
+    if not verify_bytes(public_key, repository_bytes, repository_signature):
+        raise ValueError("repository signature verification failed")
+
+    if document.get("schemaVersion") != 1:
+        raise ValueError("repository.json schemaVersion must be 1")
+    for collection_name, resolver in (("packages", resolve_package), ("resources", resolve_resource)):
+        for entry in document.get(collection_name, []):
+            signature_value = entry.get("signature")
+            if signature_value == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
+                raise ValueError("formal release cannot contain signature placeholder")
+            signature = decode_signature(signature_value)
+            if signature is None:
+                raise ValueError(f"{collection_name} entry signature is invalid")
+            if collection_name == "packages":
+                payload_path = resolver(root, entry.get("downloadUrl"))
+            else:
+                payload_path = resolver(root, entry.get("downloadUrl"), entry.get("resourceType"))
+            payload = payload_path.read_bytes()
+            if hashlib.sha256(payload).hexdigest() != entry.get("sha256"):
+                raise ValueError(f"{collection_name} entry SHA-256 does not match payload")
+            if not verify_bytes(public_key, payload, signature):
+                raise ValueError(f"{collection_name} entry signature verification failed")
 
 
 def canonical_json(document: object) -> bytes:
@@ -199,10 +260,21 @@ def sign_repository(root: Path, private_key: Path) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository-root", type=Path, default=Path("."))
-    parser.add_argument("--private-key", type=Path, required=True)
+    parser.add_argument("--private-key", type=Path)
+    parser.add_argument("--public-key", type=Path)
+    parser.add_argument("--verify-release", action="store_true")
     args = parser.parse_args()
 
     root = args.repository_root.resolve()
+    private_key = args.private_key.resolve()
+    if args.verify_release:
+        public_key = args.public_key.resolve() if args.public_key else root / "official-public-key.pem"
+        if not public_key.is_file():
+            parser.error("--verify-release requires --public-key or official-public-key.pem in the repository root")
+        verify_release_artifacts(root, public_key)
+        return 0
+    if not args.private_key:
+        parser.error("--private-key is required unless --verify-release is used")
     private_key = args.private_key.resolve()
     if not private_key.is_file():
         parser.error("private key file does not exist")

@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import importlib.util
 import json
 import subprocess
 import tempfile
@@ -8,6 +9,13 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "sign_repository.py"
+
+
+def load_signer():
+    spec = importlib.util.spec_from_file_location("sign_repository", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class SignedRepositoryTests(unittest.TestCase):
@@ -64,6 +72,7 @@ class SignedRepositoryTests(unittest.TestCase):
             self.assertTrue(package_signature)
             self.assert_verified(public_key, package, package_signature)
             self.assert_verified_bytes(public_key, root / "repository.json", base64.b64decode(first_signature.strip(), validate=True))
+            load_signer().verify_release_artifacts(root, public_key)
 
             self.run_sign(root, private_key)
             self.assertEqual(first_index, (root / "repository.json").read_bytes())
@@ -111,8 +120,35 @@ class SignedRepositoryTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(resource.read_bytes()).hexdigest(), entry["sha256"])
             signature = base64.b64decode(entry["signature"], validate=True)
             self.assert_verified(public_key, resource, signature)
+            load_signer().verify_release_artifacts(root, public_key)
 
-    def test_rejects_path_traversal(self):
+    def test_rejects_resource_path_matrix_without_writing_signature(self):
+        signer = load_signer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            resource = root / "canvases" / "demo.mgcanvas.json"
+            resource.parent.mkdir()
+            resource.write_bytes(b"{}")
+            cases = [
+                ("../canvases/demo.mgcanvas.json", "canvas"),
+                ("canvases/../demo.mgcanvas.json", "canvas"),
+                ("canvases//demo.mgcanvas.json", "canvas"),
+                ("canvases/./demo.mgcanvas.json", "canvas"),
+                ("/canvases/demo.mgcanvas.json", "canvas"),
+                ("https://example.invalid/demo.mgcanvas.json", "canvas"),
+                ("canvases/demo.mgcanvas.json?x=1", "canvas"),
+                ("canvases/demo.mgcanvas.json#fragment", "canvas"),
+                ("canvases/%2e%2e/demo.mgcanvas.json", "canvas"),
+                ("canvases/%252e%252e/demo.mgcanvas.json", "canvas"),
+                ("models/demo.mgcanvas.json", "canvas"),
+                ("canvases/demo.mgmodel.json", "canvas"),
+            ]
+            for path, resource_type in cases:
+                with self.subTest(path=path):
+                    with self.assertRaises(ValueError):
+                        signer.resolve_resource(root, path, resource_type)
+                    self.assertFalse((root / "repository.json.sig").exists())
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "repository.json").write_text(
