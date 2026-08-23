@@ -1,6 +1,14 @@
 # Device Package Content Policy
 
-This repository is intended for self-authored or explicitly redistributable device package metadata and resources.
+This repository may publish three first-party declarative resource types:
+
+- device resources (`.mgdevice.json`) containing exact Host Driver references, stable USB identity, dimensions, and verification metadata;
+- RGB model resources (`.mgmodel.json`) containing self-authored coordinates and LED index mappings;
+- Canvas resources (`.mgcanvas.json`) containing Canvas geometry, `all-compatible` targets, and Host-supported built-in effect kinds and parameters.
+
+A new declarative Canvas resource does not require a software update. An effect kind unknown to the Host does require a Host software update before the resource can be supported.
+
+Resources must not contain HTML, JavaScript, WebAssembly, scripts, protocol fields, device paths, vendor templates, third-party assets, binaries, SDKs, installers, or private diagnostics.
 
 A package contributor must provide:
 

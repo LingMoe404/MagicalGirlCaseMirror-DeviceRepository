@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "resourceId": "device-vmax-320x960",
+  "version": "1.0.0",
+  "name": "Vmax 320x960",
+  "publisher": "MagicalGirlCaseMirror",
+  "profile": {
+    "id": "vmax-320x960",
+    "name": "Vmax 320x960",
+    "deviceClass": "display",
+    "vendorId": "33C3",
+    "productId": "F101",
+    "interfaceNumber": 0,
+    "resolution": {
+      "width": 320,
+      "height": 960
+    },
+    "orientation": "portrait",
+    "aspectRatio": "1:3",
+    "frameFormat": "jpeg",
+    "connection": "usb-cdc",
+    "layoutId": "ratio-1-3",
+    "driver": {
+      "kind": "vmax-jpeg",
+      "status": "implemented"
+    },
+    "verification": {
+      "hardwareVerified": true
+    }
+  }
+}

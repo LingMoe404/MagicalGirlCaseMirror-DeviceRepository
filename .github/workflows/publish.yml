@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - repository.json
+      - devices/**
+      - models/**
+      - canvases/**
       - packages/**
       - scripts/sign_repository.py
       - .github/workflows/publish.yml
@@ -27,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sign repository and package files
+      - name: Sign repository and resource files
         env:
           OFFICIAL_REPOSITORY_SIGNING_KEY_PEM: ${{ secrets.OFFICIAL_REPOSITORY_SIGNING_KEY_PEM }}
         run: |
@@ -58,7 +61,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add repository.json repository.json.sig packages
+          git add repository.json repository.json.sig packages devices models canvases
           git commit -m "chore: sign official device repository"
           git push origin HEAD:main
 

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "resourceId": "device-mythcool-480x480",
+  "version": "1.0.0",
+  "name": "MythCool 480x480",
+  "publisher": "MagicalGirlCaseMirror",
+  "profile": {
+    "id": "mythcool-480x480",
+    "name": "MythCool 480x480",
+    "deviceClass": "display",
+    "vendorId": "374A",
+    "productId": "A005",
+    "interfaceNumber": 0,
+    "resolution": {
+      "width": 480,
+      "height": 480
+    },
+    "orientation": "square",
+    "aspectRatio": "1:1",
+    "frameFormat": "bgr565-le",
+    "connection": "winusb-bulk",
+    "layoutId": "ratio-1-1",
+    "driver": {
+      "kind": "mythcool-rgb565",
+      "status": "implemented"
+    },
+    "verification": {
+      "hardwareVerified": true
+    }
+  }
+}

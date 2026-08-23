@@ -2,11 +2,19 @@
 
 MagicalGirlCaseMirror 的独立设备包仓库。
 
-本仓库用于发布可由 Control Center 订阅和更新的声明式设备包、LED 模型、设备拓扑和其他受控资源。
+本仓库用于发布可由 Control Center 订阅和更新的声明式设备包、LED 模型、设备拓扑和其他受控资源。设备、模型和 Canvas 资源使用独立的 `.mgdevice.json`、`.mgmodel.json` 和 `.mgcanvas.json` 文件；索引中的 `packages[]` 保留用于旧客户端兼容，新的声明式资源位于 `resources[]`。
 
 ## 当前状态
 
-仓库已建立，设备包格式正在开发中。首批包将在 `.mgpack.json` schema 和签名发布流程确定后加入。
+仓库发布声明式设备、RGB LED 模型和 Canvas 资源。首批资源已经加入索引；资源内容只使用 Host 已实现的 Driver 和内置效果，不携带可执行代码。
+
+资源目录：
+
+- `devices/`：已验证的 Vmax 320x960 和 MythCool 480x480 设备声明；
+- `models/`：自研 RGB LED 坐标和索引映射；
+- `canvases/`：独立的 `solid`、`rainbow`、`breathing`、`wave` 和 `rainbow-rise` 声明式画布。
+
+新增声明式画布只需发布新的 `.mgcanvas.json` 资源和索引条目，无需更新软件。若新增 Host 尚未知的 effect kind，仍必须先更新软件并由 Host 实现和验证。
 
 ## 安全边界
 

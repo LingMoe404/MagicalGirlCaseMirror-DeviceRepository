@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "resourceId": "canvas-rainbow",
+  "version": "1.0.0",
+  "name": "Rainbow",
+  "publisher": "MagicalGirlCaseMirror",
+  "canvas": {
+    "schemaVersion": 2,
+    "id": "rainbow",
+    "layoutId": "ratio-1-1",
+    "canvas": { "width": 480, "height": 480 },
+    "components": [
+      {
+        "id": "screen",
+        "kind": "screen-region",
+        "screen": { "x": 0, "y": 0, "width": 480, "height": 480 }
+      }
+    ]
+  },
+  "targets": { "mode": "all-compatible" },
+  "effect": {
+    "kind": "rainbow",
+    "parameters": { "periodSeconds": 8, "speed": 1 }
+  }
+}

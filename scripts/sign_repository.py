@@ -16,6 +16,11 @@ from urllib.parse import urlsplit
 
 SIGNATURE_FILE = "repository.json.sig"
 PACKAGE_SUFFIX = ".mgpack.json"
+RESOURCE_SUFFIXES = {
+    "device": ".mgdevice.json",
+    "rgb-model": ".mgmodel.json",
+    "canvas": ".mgcanvas.json",
+}
 
 
 def run_openssl(args: list[str]) -> bytes:
@@ -95,6 +100,30 @@ def resolve_package(root: Path, download_url: object) -> Path:
     return candidate
 
 
+def resolve_resource(root: Path, download_url: object, resource_type: object) -> Path:
+    if not isinstance(download_url, str) or not download_url:
+        raise ValueError("resource downloadUrl must be a non-empty relative path")
+    if not isinstance(resource_type, str) or resource_type not in RESOURCE_SUFFIXES:
+        raise ValueError("resource resourceType is unsupported")
+    if "\\" in download_url or "?" in download_url or "#" in download_url:
+        raise ValueError("resource downloadUrl contains a forbidden delimiter")
+    parsed = urlsplit(download_url)
+    if parsed.scheme or parsed.netloc or not parsed.path or parsed.path.startswith("/"):
+        raise ValueError("resource downloadUrl must be relative")
+    parts = parsed.path.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise ValueError("resource downloadUrl contains unsafe path segments")
+    if not parsed.path.endswith(RESOURCE_SUFFIXES[resource_type]):
+        raise ValueError("resource downloadUrl has an invalid extension")
+    candidate = (root / parsed.path).resolve()
+    root_resolved = root.resolve()
+    if os.path.commonpath([str(root_resolved), str(candidate)]) != str(root_resolved):
+        raise ValueError("resource downloadUrl escapes repository root")
+    if not candidate.is_file():
+        raise FileNotFoundError(f"resource file does not exist: {parsed.path}")
+    return candidate
+
+
 def canonical_json(document: object) -> bytes:
     return (json.dumps(document, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
 
@@ -129,6 +158,19 @@ def sign_repository(root: Path, private_key: Path) -> bool:
             existing = decode_signature(entry.get("signature"))
             if existing is None or not verify_bytes(public_key, package_bytes, existing):
                 entry["signature"] = base64.b64encode(sign_bytes(private_key, package_bytes)).decode("ascii")
+
+        resources = document.get("resources", [])
+        if not isinstance(resources, list):
+            raise ValueError("repository resources must be an array")
+        for entry in resources:
+            if not isinstance(entry, dict):
+                raise ValueError("repository resource entries must be objects")
+            resource_path = resolve_resource(root, entry.get("downloadUrl"), entry.get("resourceType"))
+            resource_bytes = resource_path.read_bytes()
+            entry["sha256"] = hashlib.sha256(resource_bytes).hexdigest()
+            existing = decode_signature(entry.get("signature"))
+            if existing is None or not verify_bytes(public_key, resource_bytes, existing):
+                entry["signature"] = base64.b64encode(sign_bytes(private_key, resource_bytes)).decode("ascii")
 
         repository_bytes = canonical_json(document)
         if repository_path.read_bytes() != repository_bytes:

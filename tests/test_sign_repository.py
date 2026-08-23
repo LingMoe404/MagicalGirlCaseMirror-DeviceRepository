@@ -69,6 +69,49 @@ class SignedRepositoryTests(unittest.TestCase):
             self.assertEqual(first_index, (root / "repository.json").read_bytes())
             self.assertEqual(first_signature, (root / "repository.json.sig").read_bytes())
 
+    def test_signing_updates_resource_hashes_and_signatures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            resource = root / "canvases" / "demo.mgcanvas.json"
+            resource.parent.mkdir()
+            resource.write_bytes(b'{"schemaVersion":1}\n')
+            (root / "repository.json").write_text(
+                json.dumps({
+                    "schemaVersion": 1,
+                    "repositoryId": "official",
+                    "name": "Official",
+                    "publisher": "Test",
+                    "packages": [],
+                    "resources": [{
+                        "resourceId": "canvas-demo",
+                        "resourceType": "canvas",
+                        "version": "1.0.0",
+                        "downloadUrl": "canvases/demo.mgcanvas.json",
+                        "sha256": "0" * 64,
+                        "minHostVersion": "1.0.0",
+                        "signature": "",
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            private_key = root / "private.pem"
+            public_key = root / "public.pem"
+            subprocess.run(
+                ["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(private_key)],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            subprocess.run(
+                ["openssl", "pkey", "-in", str(private_key), "-pubout", "-out", str(public_key)],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+
+            self.run_sign(root, private_key)
+            index = json.loads((root / "repository.json").read_text(encoding="utf-8"))
+            entry = index["resources"][0]
+            self.assertEqual(hashlib.sha256(resource.read_bytes()).hexdigest(), entry["sha256"])
+            signature = base64.b64decode(entry["signature"], validate=True)
+            self.assert_verified(public_key, resource, signature)
+
     def test_rejects_path_traversal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
