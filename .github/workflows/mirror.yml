@@ -3,8 +3,6 @@ name: Mirror Signed Device Repository
 on:
   workflow_call:
     secrets:
-      ATOMGIT_TOKEN:
-        required: true
       GITEE_TOKEN:
         required: true
   workflow_dispatch:
@@ -21,15 +19,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Mirror branches and tags
+      - name: Mirror branches and tags to Gitee
         env:
           SOURCE_TOKEN: ${{ github.token }}
-          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           set -euo pipefail
 
-          test -n "$ATOMGIT_TOKEN"
           test -n "$GITEE_TOKEN"
 
           cat > "$RUNNER_TEMP/git-askpass" <<'SCRIPT'
@@ -57,15 +53,6 @@ jobs:
           MIRROR_USER=x-access-token \
           MIRROR_TOKEN="$SOURCE_TOKEN" \
           git -C "$mirror_dir" fetch --prune source \
-            '+refs/heads/*:refs/heads/*' \
-            '+refs/tags/*:refs/tags/*'
-
-          git -C "$mirror_dir" remote add atomgit \
-            "https://atomgit.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository.git"
-
-          MIRROR_USER=LingMoe404 \
-          MIRROR_TOKEN="$ATOMGIT_TOKEN" \
-          git -C "$mirror_dir" push --prune atomgit \
             '+refs/heads/*:refs/heads/*' \
             '+refs/tags/*:refs/tags/*'
 

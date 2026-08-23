@@ -65,4 +65,5 @@ jobs:
   mirror:
     needs: sign
     uses: ./.github/workflows/mirror.yml
-    secrets: inherit
+    secrets:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
