@@ -31,7 +31,7 @@ signatures/            # 仓库和包签名
 
 官方仓库使用 ECDSA P-256 / SHA-256。发布工作流从 GitHub Secret `OFFICIAL_REPOSITORY_SIGNING_KEY_PEM` 读取私钥，为每个 `.mgpack.json` 生成 Base64 DER 签名，再签名根目录 `repository.json` 为同目录的 `repository.json.sig`。私钥只在 Actions 临时目录存在，不提交到仓库，也不写入日志。
 
-GitHub 是唯一权威编辑源。签名完成后，同一提交由镜像工作流同步到 AtomGit 和 Gitee；两个镜像不能独立编辑设备包。
+GitHub 是唯一权威编辑源。签名完成后，同一提交由镜像工作流同步到 Gitee；镜像不能独立编辑设备包。
 
 三个官方订阅地址：
 
