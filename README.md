@@ -36,10 +36,9 @@ GitHub 是唯一权威编辑源。签名完成后，同一提交由镜像工作�
 三个官方订阅地址：
 
 - GitHub：`https://raw.githubusercontent.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository/main/repository.json`
-- AtomGit：`https://atomgit.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository/raw/branch/main/repository.json`
 - Gitee：`https://gitee.com/LingMoe404/magical-girl-case-mirror-device-repository/raw/main/repository.json`
 
-三端必须返回相同的 `repository.json`、`repository.json.sig` 和 `packages/` 文件；客户端仍以内置公钥验证签名，不因地址不同而建立不同信任根。
+两端同目录提供 `repository.json.sig` 和 `packages/` 文件。GitHub 是权威源，Gitee 只做相同提交的镜像；客户端以内置公钥验证签名，不因地址不同而建立不同信任根。当前已验证两端 `repository.json` SHA-256 为 `ae2d13932f395846054d3d316e49723ef1ef6201c075cddd259137d798f2e3d7`，`repository.json.sig` SHA-256 为 `2679b578208ec060d791ebdc7a9c7f66679bc9e058749619d326eb5cf7ad8ffe`。
 
 ## 发布要求
 
