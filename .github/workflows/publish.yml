@@ -1,0 +1,65 @@
+name: Publish Signed Device Repository
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - repository.json
+      - packages/**
+      - scripts/sign_repository.py
+      - .github/workflows/publish.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: device-repository-publish
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out authoritative source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sign repository and package files
+        env:
+          OFFICIAL_REPOSITORY_SIGNING_KEY_PEM: ${{ secrets.OFFICIAL_REPOSITORY_SIGNING_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          test -n "$OFFICIAL_REPOSITORY_SIGNING_KEY_PEM"
+          umask 077
+          key_file="$RUNNER_TEMP/official-repository-signing-key.pem"
+          cleanup() {
+            if command -v shred >/dev/null 2>&1; then
+              shred -u "$key_file" 2>/dev/null || true
+            else
+              rm -f "$key_file"
+            fi
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$OFFICIAL_REPOSITORY_SIGNING_KEY_PEM" > "$key_file"
+          python3 scripts/sign_repository.py \
+            --repository-root . \
+            --private-key "$key_file"
+
+          if git diff --quiet -- repository.json repository.json.sig; then
+            echo "Signed repository is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repository.json repository.json.sig packages
+          git commit -m "chore: sign official device repository"
+          git push origin HEAD:main
+
+  mirror:
+    needs: sign
+    uses: ./.github/workflows/mirror.yml
+    secrets: inherit

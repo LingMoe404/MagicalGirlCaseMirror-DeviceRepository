@@ -1,7 +1,12 @@
-name: Mirror Device Repository
+name: Mirror Signed Device Repository
 
 on:
-  push:
+  workflow_call:
+    secrets:
+      ATOMGIT_TOKEN:
+        required: true
+      GITEE_TOKEN:
+        required: true
   workflow_dispatch:
 
 permissions:
