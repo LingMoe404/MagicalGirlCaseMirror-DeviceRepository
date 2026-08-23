@@ -16,7 +16,6 @@ from urllib.parse import urlsplit
 
 
 SIGNATURE_FILE = "repository.json.sig"
-PACKAGE_SUFFIX = ".mgpack.json"
 RESOURCE_DIRECTORIES = {
     "device": "devices",
     "rgb-model": "models",
@@ -89,29 +88,6 @@ def _reject_encoded_path(path: str) -> None:
         raise ValueError("downloadUrl must not contain percent-encoded path syntax")
 
 
-def resolve_package(root: Path, download_url: object) -> Path:
-    if not isinstance(download_url, str) or not download_url:
-        raise ValueError("package downloadUrl must be a non-empty relative path")
-    if "\\" in download_url or "?" in download_url or "#" in download_url:
-        raise ValueError("package downloadUrl contains a forbidden delimiter")
-    _reject_encoded_path(download_url)
-    parsed = urlsplit(download_url)
-    if parsed.scheme or parsed.netloc or not parsed.path or parsed.path.startswith("/"):
-        raise ValueError("package downloadUrl must be relative")
-    parts = parsed.path.split("/")
-    if any(part in ("", ".", "..") for part in parts):
-        raise ValueError("package downloadUrl contains unsafe path segments")
-    if not parsed.path.endswith(PACKAGE_SUFFIX):
-        raise ValueError(f"package downloadUrl must end with {PACKAGE_SUFFIX}")
-    candidate = (root / parsed.path).resolve()
-    root_resolved = root.resolve()
-    if os.path.commonpath([str(root_resolved), str(candidate)]) != str(root_resolved):
-        raise ValueError("package downloadUrl escapes repository root")
-    if not candidate.is_file():
-        raise FileNotFoundError(f"package file does not exist: {parsed.path}")
-    return candidate
-
-
 def resolve_resource(root: Path, download_url: object, resource_type: object) -> Path:
     if not isinstance(download_url, str) or not download_url:
         raise ValueError("resource downloadUrl must be a non-empty relative path")
@@ -151,10 +127,14 @@ def verify_release_artifacts(root: Path, public_key: Path) -> None:
         raise ValueError("formal release requires repository.json")
     repository_bytes = repository_path.read_bytes()
     document = json.loads(repository_bytes)
-    for collection_name in ("packages", "resources"):
-        for entry in document.get(collection_name, []):
-            if entry.get("signature") == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
-                raise ValueError("formal release cannot contain signature placeholder")
+    if "packages" in document:
+        raise ValueError("repository.json must not contain packages")
+    resources = document.get("resources")
+    if not isinstance(resources, list):
+        raise ValueError("repository resources must be an array")
+    for entry in resources:
+        if entry.get("signature") == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
+            raise ValueError("formal release cannot contain signature placeholder")
     if not signature_path.is_file():
         raise ValueError("formal release requires repository.json.sig")
     try:
@@ -166,23 +146,19 @@ def verify_release_artifacts(root: Path, public_key: Path) -> None:
 
     if document.get("schemaVersion") != 1:
         raise ValueError("repository.json schemaVersion must be 1")
-    for collection_name, resolver in (("packages", resolve_package), ("resources", resolve_resource)):
-        for entry in document.get(collection_name, []):
-            signature_value = entry.get("signature")
-            if signature_value == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
-                raise ValueError("formal release cannot contain signature placeholder")
-            signature = decode_signature(signature_value)
-            if signature is None:
-                raise ValueError(f"{collection_name} entry signature is invalid")
-            if collection_name == "packages":
-                payload_path = resolver(root, entry.get("downloadUrl"))
-            else:
-                payload_path = resolver(root, entry.get("downloadUrl"), entry.get("resourceType"))
-            payload = payload_path.read_bytes()
-            if hashlib.sha256(payload).hexdigest() != entry.get("sha256"):
-                raise ValueError(f"{collection_name} entry SHA-256 does not match payload")
-            if not verify_bytes(public_key, payload, signature):
-                raise ValueError(f"{collection_name} entry signature verification failed")
+    for entry in resources:
+        signature_value = entry.get("signature")
+        if signature_value == "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE":
+            raise ValueError("formal release cannot contain signature placeholder")
+        signature = decode_signature(signature_value)
+        if signature is None:
+            raise ValueError("resources entry signature is invalid")
+        payload_path = resolve_resource(root, entry.get("downloadUrl"), entry.get("resourceType"))
+        payload = payload_path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != entry.get("sha256"):
+            raise ValueError("resources entry SHA-256 does not match payload")
+        if not verify_bytes(public_key, payload, signature):
+            raise ValueError("resources entry signature verification failed")
 
 
 def canonical_json(document: object) -> bytes:
@@ -204,25 +180,14 @@ def sign_repository(root: Path, private_key: Path) -> bool:
         raise ValueError("repository.json schemaVersion must be 1")
     if document.get("repositoryId") != "official":
         raise ValueError("official repositoryId must be 'official'")
-    packages = document.get("packages")
-    if not isinstance(packages, list):
-        raise ValueError("repository.json packages must be an array")
+    if "packages" in document:
+        raise ValueError("repository.json must not contain packages")
+    resources = document.get("resources")
+    if not isinstance(resources, list):
+        raise ValueError("repository resources must be an array")
 
     with tempfile.TemporaryDirectory(prefix="mg-repository-key-") as directory_name:
         public_key = load_private_public_key(private_key, Path(directory_name))
-        for entry in packages:
-            if not isinstance(entry, dict):
-                raise ValueError("repository package entries must be objects")
-            package_path = resolve_package(root, entry.get("downloadUrl"))
-            package_bytes = package_path.read_bytes()
-            entry["sha256"] = hashlib.sha256(package_bytes).hexdigest()
-            existing = decode_signature(entry.get("signature"))
-            if existing is None or not verify_bytes(public_key, package_bytes, existing):
-                entry["signature"] = base64.b64encode(sign_bytes(private_key, package_bytes)).decode("ascii")
-
-        resources = document.get("resources", [])
-        if not isinstance(resources, list):
-            raise ValueError("repository resources must be an array")
         for entry in resources:
             if not isinstance(entry, dict):
                 raise ValueError("repository resource entries must be objects")

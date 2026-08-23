@@ -22,10 +22,9 @@ class SignedRepositoryTests(unittest.TestCase):
     def test_signing_is_verifiable_and_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            packages = root / "packages"
-            packages.mkdir()
-            package = packages / "demo.mgpack.json"
-            package.write_bytes(b'{"schemaVersion":1}\n')
+            resource = root / "canvases" / "demo.mgcanvas.json"
+            resource.parent.mkdir()
+            resource.write_bytes(b'{"schemaVersion":1}\n')
             (root / "repository.json").write_text(
                 json.dumps(
                     {
@@ -33,16 +32,15 @@ class SignedRepositoryTests(unittest.TestCase):
                         "repositoryId": "official",
                         "name": "Official",
                         "publisher": "Test",
-                        "packages": [
-                            {
-                                "packageId": "demo",
-                                "version": "1.0.0",
-                                "downloadUrl": "packages/demo.mgpack.json",
-                                "sha256": "0" * 64,
-                                "minHostVersion": "1.0.0",
-                                "signature": "",
-                            }
-                        ],
+                        "resources": [{
+                            "resourceId": "canvas-demo",
+                            "resourceType": "canvas",
+                            "version": "1.0.0",
+                            "downloadUrl": "canvases/demo.mgcanvas.json",
+                            "sha256": "0" * 64,
+                            "minHostVersion": "1.0.0",
+                            "signature": "",
+                        }],
                     }
                 ),
                 encoding="utf-8",
@@ -66,12 +64,14 @@ class SignedRepositoryTests(unittest.TestCase):
             first_index = (root / "repository.json").read_bytes()
             first_signature = (root / "repository.json.sig").read_bytes()
             self.assertTrue(first_signature.strip())
-            entry = json.loads(first_index)["packages"][0]
-            self.assertEqual(entry["sha256"], hashlib.sha256(package.read_bytes()).hexdigest())
-            package_signature = base64.b64decode(entry["signature"], validate=True)
-            self.assertTrue(package_signature)
-            self.assert_verified(public_key, package, package_signature)
-            self.assert_verified_bytes(public_key, root / "repository.json", base64.b64decode(first_signature.strip(), validate=True))
+            entry = json.loads(first_index)["resources"][0]
+            self.assertEqual(entry["sha256"], hashlib.sha256(resource.read_bytes()).hexdigest())
+            resource_signature = base64.b64decode(entry["signature"], validate=True)
+            self.assertTrue(resource_signature)
+            self.assert_verified(public_key, resource, resource_signature)
+            self.assert_verified_bytes(
+                public_key, root / "repository.json", base64.b64decode(first_signature.strip(), validate=True)
+            )
             load_signer().verify_release_artifacts(root, public_key)
             verify_result = subprocess.run(
                 [
@@ -105,7 +105,6 @@ class SignedRepositoryTests(unittest.TestCase):
                     "repositoryId": "official",
                     "name": "Official",
                     "publisher": "Test",
-                    "packages": [],
                     "resources": [{
                         "resourceId": "canvas-demo",
                         "resourceType": "canvas",
@@ -137,6 +136,21 @@ class SignedRepositoryTests(unittest.TestCase):
             self.assert_verified(public_key, resource, signature)
             load_signer().verify_release_artifacts(root, public_key)
 
+    def test_resolve_resource_accepts_only_canonical_paths_for_each_type(self):
+        signer = load_signer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            valid_paths = {
+                "device": "devices/demo.mgdevice.json",
+                "rgb-model": "models/demo.mgmodel.json",
+                "canvas": "canvases/demo.mgcanvas.json",
+            }
+            for resource_type, path in valid_paths.items():
+                resource = root / path
+                resource.parent.mkdir(parents=True, exist_ok=True)
+                resource.write_bytes(b"{}")
+                self.assertEqual(resource, signer.resolve_resource(root, path, resource_type))
+
     def test_rejects_resource_path_matrix_without_writing_signature(self):
         signer = load_signer()
         with tempfile.TemporaryDirectory() as directory:
@@ -157,51 +171,21 @@ class SignedRepositoryTests(unittest.TestCase):
                 ("canvases/%252e%252e/demo.mgcanvas.json", "canvas"),
                 ("models/demo.mgcanvas.json", "canvas"),
                 ("canvases/demo.mgmodel.json", "canvas"),
+                ("../devices/demo.mgdevice.json", "device"),
+                ("devices/../demo.mgdevice.json", "device"),
+                ("devices/demo.mgmodel.json", "device"),
+                ("devices/demo.mgdevice.json?x=1", "device"),
+                ("../models/demo.mgmodel.json", "rgb-model"),
+                ("models/../demo.mgmodel.json", "rgb-model"),
+                ("models/demo.mgdevice.json", "rgb-model"),
+                ("models/demo.mgmodel.json#fragment", "rgb-model"),
+                ("packages/demo.mgpack.json", "canvas"),
             ]
             for path, resource_type in cases:
                 with self.subTest(path=path):
                     with self.assertRaises(ValueError):
                         signer.resolve_resource(root, path, resource_type)
                     self.assertFalse((root / "repository.json.sig").exists())
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "repository.json").write_text(
-                json.dumps(
-                    {
-                        "schemaVersion": 1,
-                        "repositoryId": "official",
-                        "name": "Official",
-                        "publisher": "Test",
-                        "packages": [
-                            {
-                                "packageId": "bad",
-                                "version": "1.0.0",
-                                "downloadUrl": "../bad.mgpack.json",
-                                "sha256": "0" * 64,
-                                "minHostVersion": "1.0.0",
-                                "signature": "",
-                            }
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            private_key = root / "private.pem"
-            subprocess.run(
-                ["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(private_key)],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            result = subprocess.run(
-                ["python", str(SCRIPT), "--repository-root", str(root), "--private-key", str(private_key)],
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertFalse((root / "repository.json.sig").exists())
 
     @staticmethod
     def run_sign(root: Path, private_key: Path) -> None:

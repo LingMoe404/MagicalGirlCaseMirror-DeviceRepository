@@ -186,7 +186,7 @@ class RepositoryResourceTests(unittest.TestCase):
 
     def test_index_resources_have_hashes_and_development_signatures_are_explicit(self):
         index = json.loads(INDEX_PATH.read_text(encoding="ascii"))
-        self.assertEqual([], index["packages"])
+        self.assertNotIn("packages", index)
         entries = index["resources"]
         self.assertEqual(9, len(entries))
         self.assertEqual(set(sum((list(items.values()) for items in RESOURCE_FILES.values()), [])),
@@ -200,9 +200,9 @@ class RepositoryResourceTests(unittest.TestCase):
             self.assertRegex(entry["sha256"], r"^[0-9a-f]{64}$")
             for field in ("resourceId", "resourceType", "version", "downloadUrl", "sha256", "minHostVersion", "signature"):
                 self.assertTrue(entry[field], field)
-            self.assertEqual("TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE", entry["signature"])
+            self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
 
-    def test_release_verifier_rejects_pending_signatures_before_key_use(self):
+    def test_release_verifier_rejects_package_collection_before_key_use(self):
         signer = load_signer()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -210,9 +210,9 @@ class RepositoryResourceTests(unittest.TestCase):
                 "schemaVersion": 1,
                 "repositoryId": "official",
                 "packages": [],
-                "resources": [{"downloadUrl": "canvases/demo.mgcanvas.json", "signature": "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE"}],
+                "resources": [],
             }), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "placeholder"):
+            with self.assertRaisesRegex(ValueError, "packages"):
                 signer.verify_release_artifacts(root, root / "public.pem")
 
     def assert_effect_parameters_are_safe(self, kind, parameters):
