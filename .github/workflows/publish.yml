@@ -48,7 +48,10 @@ jobs:
             --repository-root . \
             --private-key "$key_file"
 
-          if git diff --quiet -- repository.json repository.json.sig; then
+          if git diff --quiet -- repository.json && \
+             git diff --quiet -- repository.json.sig && \
+             test -f repository.json.sig && \
+             git ls-files --error-unmatch repository.json.sig >/dev/null 2>&1; then
             echo "Signed repository is already current."
             exit 0
           fi
