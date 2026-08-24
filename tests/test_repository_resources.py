@@ -41,7 +41,8 @@ RESOURCE_FILES = {
 }
 FORBIDDEN_KEYS = {
     "html", "javascript", "js", "script", "scripts", "wasm", "webassembly",
-    "protocol", "protocolBytes", "usbPath", "devicePath", "comPort", "endpoint",
+    "protocol", "protocolBytes", "reportId", "hidReport", "usbReport", "commandBytes",
+    "keyboardId", "vial", "rawCapture", "usbPath", "devicePath", "comPort", "endpoint",
     "thirdParty", "vendorTemplate", "vendorAsset", "path", "filePath",
 }
 SAFE_RESOURCE_PATH = re.compile(
@@ -132,15 +133,19 @@ class RepositoryResourceTests(unittest.TestCase):
                 self.assertNotIn("resolution", profile)
                 self.assertNotIn("frameFormat", profile)
                 self.assertNotIn("lighting", profile)
+                self.assertEqual(
+                    {"id", "name", "deviceClass", "vendorId", "productId", "interfaceNumber",
+                     "connection", "keyboard", "driver", "verification"},
+                    set(profile),
+                )
+                self.assertEqual({"zones", "maxLeds", "colorOrder", "perKey"}, set(profile["keyboard"]))
                 topology = profile["keyboard"]
                 self.assertEqual(2, topology["zones"])
                 self.assertEqual(13, topology["maxLeds"])
                 self.assertTrue(topology["perKey"])
-                zones = {zone["id"]: zone for zone in topology["zoneDefinitions"]}
-                self.assertEqual(13, zones["per-key"]["ledCount"])
-                self.assertEqual("pending", zones["underglow"]["evidenceStatus"])
-                self.assertIsNone(zones["underglow"]["ledCount"])
-                self.assertEqual("underglow", zones["underglow"]["name"])
+                self.assertEqual({"kind", "status"}, set(profile["driver"]))
+                self.assertEqual({"hardwareVerified", "evidenceStatus"}, set(profile["verification"]))
+                self.assertEqual("pending", profile["verification"]["evidenceStatus"])
                 continue
             self.assertEqual(expected[document["resourceId"]], (
                 profile["vendorId"], profile["productId"], profile["resolution"]["width"],
@@ -156,12 +161,37 @@ class RepositoryResourceTests(unittest.TestCase):
         model = self.load("models/qinghe-pad-13-key-plus-underglow.mgmodel.json")
         self.assertEqual({"schemaVersion", "resourceId", "version", "name", "publisher", "profile"}, set(device))
         self.assertEqual({"schemaVersion", "resourceId", "version", "name", "publisher", "model"}, set(model))
+        self.assertEqual(
+            {"id", "type", "ledCount", "width", "height", "coordinates", "mapping"},
+            set(model["model"]),
+        )
         self.assertEqual(13, model["model"]["ledCount"])
-        self.assertEqual("pending", model["model"]["underglow"]["evidenceStatus"])
-        self.assertIsNone(model["model"]["underglow"]["ledCount"])
         self.assertEqual(13, len(model["model"]["coordinates"]))
         self.assertEqual(list(range(13)), model["model"]["mapping"])
-        self.assertEqual({"id", "type", "ledCount", "width", "height", "coordinates", "mapping", "underglow"}, set(model["model"]))
+        self.assertNotIn("underglow", model["model"])
+        self.assertNotIn("underglow", device["profile"])
+        self.assertNotIn("zoneDefinitions", device["profile"]["keyboard"])
+
+    def test_qinghe_nested_schemas_are_exact_and_protocol_free(self):
+        device = self.load("devices/qinghe-pad-christmas-16m.mgdevice.json")
+        profile = device["profile"]
+        self.assertEqual(
+            {"id", "name", "deviceClass", "vendorId", "productId", "interfaceNumber",
+             "connection", "keyboard", "driver", "verification"},
+            set(profile),
+        )
+        self.assertEqual({"zones", "maxLeds", "colorOrder", "perKey"}, set(profile["keyboard"]))
+        self.assertEqual({"kind", "status"}, set(profile["driver"]))
+        self.assertEqual({"hardwareVerified", "evidenceStatus"}, set(profile["verification"]))
+        self.assertFalse(profile["verification"]["hardwareVerified"])
+        self.assertEqual("pending-verification", profile["driver"]["status"])
+
+        model = self.load("models/qinghe-pad-13-key-plus-underglow.mgmodel.json")["model"]
+        self.assertEqual(
+            {"id", "type", "ledCount", "width", "height", "coordinates", "mapping"},
+            set(model),
+        )
+        self.assertNotIn("underglow", model)
 
     def test_models_use_bounded_bijective_mapping_and_coordinates(self):
         for relative_path in RESOURCE_FILES["rgb-model"]:

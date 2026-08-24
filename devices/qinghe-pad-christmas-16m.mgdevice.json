@@ -16,21 +16,7 @@
       "zones": 2,
       "maxLeds": 13,
       "colorOrder": "RGB",
-      "perKey": true,
-      "zoneDefinitions": [
-        {
-          "id": "per-key",
-          "name": "per-key",
-          "ledCount": 13,
-          "evidenceStatus": "confirmed"
-        },
-        {
-          "id": "underglow",
-          "name": "underglow",
-          "ledCount": null,
-          "evidenceStatus": "pending"
-        }
-      ]
+      "perKey": true
     },
     "driver": {
       "kind": "qinghe-pad-vial-rgb",
