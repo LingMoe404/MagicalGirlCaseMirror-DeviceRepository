@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "resourceId": "device-qinghe-pad-christmas-16m",
+  "version": "1.0.0",
+  "name": "Qinghe Pad Christmas 16M",
+  "publisher": "MagicalGirlCaseMirror",
+  "profile": {
+    "id": "qinghe-pad-christmas-16m",
+    "name": "Qinghe Pad Christmas 16M",
+    "deviceClass": "keyboard-rgb",
+    "vendorId": "AE86",
+    "productId": "0063",
+    "interfaceNumber": 1,
+    "connection": "usb-hid",
+    "keyboard": {
+      "zones": 2,
+      "maxLeds": 13,
+      "colorOrder": "RGB",
+      "perKey": true,
+      "zoneDefinitions": [
+        {
+          "id": "per-key",
+          "name": "per-key",
+          "ledCount": 13,
+          "evidenceStatus": "confirmed"
+        },
+        {
+          "id": "underglow",
+          "name": "underglow",
+          "ledCount": null,
+          "evidenceStatus": "pending"
+        }
+      ]
+    },
+    "driver": {
+      "kind": "qinghe-pad-vial-rgb",
+      "status": "pending-verification"
+    },
+    "verification": {
+      "hardwareVerified": false,
+      "evidenceStatus": "pending"
+    }
+  }
+}

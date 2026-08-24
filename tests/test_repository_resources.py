@@ -24,10 +24,12 @@ RESOURCE_FILES = {
     "device": {
         "devices/vmax-320x960.mgdevice.json": "device-vmax-320x960",
         "devices/mythcool-480x480.mgdevice.json": "device-mythcool-480x480",
+        "devices/qinghe-pad-christmas-16m.mgdevice.json": "device-qinghe-pad-christmas-16m",
     },
     "rgb-model": {
         "models/rgb-led-strip-16.mgmodel.json": "rgb-led-strip-16",
         "models/rgb-led-strip-64.mgmodel.json": "rgb-led-strip-64",
+        "models/qinghe-pad-13-key-plus-underglow.mgmodel.json": "qinghe-pad-13-key-plus-underglow",
     },
     "canvas": {
         "canvases/solid.mgcanvas.json": "canvas-solid",
@@ -118,6 +120,28 @@ class RepositoryResourceTests(unittest.TestCase):
         for relative_path in RESOURCE_FILES["device"]:
             document = self.load(relative_path)
             profile = document["profile"]
+            if document["resourceId"] == "device-qinghe-pad-christmas-16m":
+                self.assertEqual("keyboard-rgb", profile["deviceClass"])
+                self.assertEqual(("AE86", "0063", 1, "qinghe-pad-vial-rgb"), (
+                    profile["vendorId"], profile["productId"], profile["interfaceNumber"],
+                    profile["driver"]["kind"]
+                ))
+                self.assertEqual("pending-verification", profile["driver"]["status"])
+                self.assertFalse(profile["verification"]["hardwareVerified"])
+                self.assertNotIn("verificationDate", profile["verification"])
+                self.assertNotIn("resolution", profile)
+                self.assertNotIn("frameFormat", profile)
+                self.assertNotIn("lighting", profile)
+                topology = profile["keyboard"]
+                self.assertEqual(2, topology["zones"])
+                self.assertEqual(13, topology["maxLeds"])
+                self.assertTrue(topology["perKey"])
+                zones = {zone["id"]: zone for zone in topology["zoneDefinitions"]}
+                self.assertEqual(13, zones["per-key"]["ledCount"])
+                self.assertEqual("pending", zones["underglow"]["evidenceStatus"])
+                self.assertIsNone(zones["underglow"]["ledCount"])
+                self.assertEqual("underglow", zones["underglow"]["name"])
+                continue
             self.assertEqual(expected[document["resourceId"]], (
                 profile["vendorId"], profile["productId"], profile["resolution"]["width"],
                 profile["resolution"]["height"], profile["driver"]["kind"]
@@ -126,6 +150,18 @@ class RepositoryResourceTests(unittest.TestCase):
             self.assertTrue(profile["verification"]["hardwareVerified"])
             self.assertEqual(0, profile["interfaceNumber"])
             self.assertNotIn("comPort", profile)
+
+    def test_qinghe_resources_are_declarative_and_protocol_free(self):
+        device = self.load("devices/qinghe-pad-christmas-16m.mgdevice.json")
+        model = self.load("models/qinghe-pad-13-key-plus-underglow.mgmodel.json")
+        self.assertEqual({"schemaVersion", "resourceId", "version", "name", "publisher", "profile"}, set(device))
+        self.assertEqual({"schemaVersion", "resourceId", "version", "name", "publisher", "model"}, set(model))
+        self.assertEqual(13, model["model"]["ledCount"])
+        self.assertEqual("pending", model["model"]["underglow"]["evidenceStatus"])
+        self.assertIsNone(model["model"]["underglow"]["ledCount"])
+        self.assertEqual(13, len(model["model"]["coordinates"]))
+        self.assertEqual(list(range(13)), model["model"]["mapping"])
+        self.assertEqual({"id", "type", "ledCount", "width", "height", "coordinates", "mapping", "underglow"}, set(model["model"]))
 
     def test_models_use_bounded_bijective_mapping_and_coordinates(self):
         for relative_path in RESOURCE_FILES["rgb-model"]:
@@ -188,7 +224,7 @@ class RepositoryResourceTests(unittest.TestCase):
         index = json.loads(INDEX_PATH.read_text(encoding="ascii"))
         self.assertNotIn("packages", index)
         entries = index["resources"]
-        self.assertEqual(9, len(entries))
+        self.assertEqual(11, len(entries))
         self.assertEqual(set(sum((list(items.values()) for items in RESOURCE_FILES.values()), [])),
                          {entry["resourceId"] for entry in entries})
         for entry in entries:
@@ -200,7 +236,10 @@ class RepositoryResourceTests(unittest.TestCase):
             self.assertRegex(entry["sha256"], r"^[0-9a-f]{64}$")
             for field in ("resourceId", "resourceType", "version", "downloadUrl", "sha256", "minHostVersion", "signature"):
                 self.assertTrue(entry[field], field)
-            self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
+            if entry["resourceId"] in {"device-qinghe-pad-christmas-16m", "qinghe-pad-13-key-plus-underglow"}:
+                self.assertEqual("TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE", entry["signature"])
+            else:
+                self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
 
     def test_active_contract_docs_use_resource_only_terminology(self):
         for path in (ROOT / "README.md", ROOT / "licenses" / "CONTENT-POLICY.md"):
