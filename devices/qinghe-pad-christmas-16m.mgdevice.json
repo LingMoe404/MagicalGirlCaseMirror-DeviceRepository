@@ -14,7 +14,7 @@
     "connection": "usb-hid",
     "keyboard": {
       "zones": 2,
-      "maxLeds": 13,
+      "maxLeds": 18,
       "colorOrder": "RGB",
       "perKey": true
     },

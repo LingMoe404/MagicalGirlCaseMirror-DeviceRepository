@@ -141,7 +141,7 @@ class RepositoryResourceTests(unittest.TestCase):
                 self.assertEqual({"zones", "maxLeds", "colorOrder", "perKey"}, set(profile["keyboard"]))
                 topology = profile["keyboard"]
                 self.assertEqual(2, topology["zones"])
-                self.assertEqual(13, topology["maxLeds"])
+                self.assertEqual(18, topology["maxLeds"])
                 self.assertTrue(topology["perKey"])
                 self.assertEqual({"kind", "status"}, set(profile["driver"]))
                 self.assertEqual({"hardwareVerified", "evidenceStatus"}, set(profile["verification"]))
@@ -165,9 +165,9 @@ class RepositoryResourceTests(unittest.TestCase):
             {"id", "type", "ledCount", "width", "height", "coordinates", "mapping"},
             set(model["model"]),
         )
-        self.assertEqual(13, model["model"]["ledCount"])
-        self.assertEqual(13, len(model["model"]["coordinates"]))
-        self.assertEqual(list(range(13)), model["model"]["mapping"])
+        self.assertEqual(18, model["model"]["ledCount"])
+        self.assertEqual(18, len(model["model"]["coordinates"]))
+        self.assertEqual(list(range(18)), model["model"]["mapping"])
         self.assertNotIn("underglow", model["model"])
         self.assertNotIn("underglow", device["profile"])
         self.assertNotIn("zoneDefinitions", device["profile"]["keyboard"])
