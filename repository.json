@@ -90,7 +90,7 @@
       "resourceType": "device",
       "version": "1.0.0",
       "downloadUrl": "devices/qinghe-pad-christmas-16m.mgdevice.json",
-      "sha256": "c217038f0942c006c44183434d5c2fa1fbcaedde36a4a53cbf747d7b8279b62c",
+      "sha256": "2489c3ce49d26052907b5083af8273448ebe145a8e286627fc551a2f59fda109",
       "minHostVersion": "1.0.0",
       "signature": "TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE"
     },

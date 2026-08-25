@@ -127,8 +127,9 @@ class RepositoryResourceTests(unittest.TestCase):
                     profile["vendorId"], profile["productId"], profile["interfaceNumber"],
                     profile["driver"]["kind"]
                 ))
-                self.assertEqual("pending-verification", profile["driver"]["status"])
-                self.assertFalse(profile["verification"]["hardwareVerified"])
+                self.assertEqual("implemented", profile["driver"]["status"])
+                self.assertTrue(profile["verification"]["hardwareVerified"])
+                self.assertEqual("verified", profile["verification"]["evidenceStatus"])
                 self.assertNotIn("verificationDate", profile["verification"])
                 self.assertNotIn("resolution", profile)
                 self.assertNotIn("frameFormat", profile)
@@ -145,7 +146,7 @@ class RepositoryResourceTests(unittest.TestCase):
                 self.assertTrue(topology["perKey"])
                 self.assertEqual({"kind", "status"}, set(profile["driver"]))
                 self.assertEqual({"hardwareVerified", "evidenceStatus"}, set(profile["verification"]))
-                self.assertEqual("pending", profile["verification"]["evidenceStatus"])
+                self.assertEqual("verified", profile["verification"]["evidenceStatus"])
                 continue
             self.assertEqual(expected[document["resourceId"]], (
                 profile["vendorId"], profile["productId"], profile["resolution"]["width"],
@@ -183,8 +184,9 @@ class RepositoryResourceTests(unittest.TestCase):
         self.assertEqual({"zones", "maxLeds", "colorOrder", "perKey"}, set(profile["keyboard"]))
         self.assertEqual({"kind", "status"}, set(profile["driver"]))
         self.assertEqual({"hardwareVerified", "evidenceStatus"}, set(profile["verification"]))
-        self.assertFalse(profile["verification"]["hardwareVerified"])
-        self.assertEqual("pending-verification", profile["driver"]["status"])
+        self.assertTrue(profile["verification"]["hardwareVerified"])
+        self.assertEqual("implemented", profile["driver"]["status"])
+        self.assertEqual("verified", profile["verification"]["evidenceStatus"])
 
         model = self.load("models/qinghe-pad-13-key-plus-underglow.mgmodel.json")["model"]
         self.assertEqual(
@@ -267,7 +269,8 @@ class RepositoryResourceTests(unittest.TestCase):
             for field in ("resourceId", "resourceType", "version", "downloadUrl", "sha256", "minHostVersion", "signature"):
                 self.assertTrue(entry[field], field)
             if entry["resourceId"] in {"device-qinghe-pad-christmas-16m", "qinghe-pad-13-key-plus-underglow"}:
-                self.assertEqual("TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE", entry["signature"])
+                self.assertNotEqual("TEST-SIGNATURE-PENDING-OFFICIAL-RELEASE", entry["signature"])
+                self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
             else:
                 self.assertRegex(entry["signature"], r"^[A-Za-z0-9+/]+={0,2}$")
 

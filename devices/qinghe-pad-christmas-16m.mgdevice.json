@@ -20,11 +20,11 @@
     },
     "driver": {
       "kind": "qinghe-pad-vial-rgb",
-      "status": "pending-verification"
+      "status": "implemented"
     },
     "verification": {
-      "hardwareVerified": false,
-      "evidenceStatus": "pending"
+      "hardwareVerified": true,
+      "evidenceStatus": "verified"
     }
   }
 }
