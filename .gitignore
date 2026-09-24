@@ -11,6 +11,8 @@ obj/
 *.suo
 *.tmp
 *.log
+__pycache__/
+*.pyc
 
 # Local package staging and signing material
 staging/
