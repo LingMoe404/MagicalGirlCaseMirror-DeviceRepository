@@ -46,7 +46,7 @@ GitHub 是唯一权威编辑源。签名完成后，同一提交由镜像工作�
 - GitHub：`https://raw.githubusercontent.com/LingMoe404/MagicalGirlCaseMirror-DeviceRepository/main/repository.json`
 - Gitee：`https://gitee.com/LingMoe404/magical-girl-case-mirror-device-repository/raw/main/repository.json`
 
-正式发布时两端同目录提供 `repository.json.sig` 以及索引引用的 `devices/`、`models/` 和 `canvases/` 文件。GitHub 是权威源，Gitee 只做相同提交的镜像；客户端以内置公钥验证签名，不因地址不同而建立不同信任根。当前开发提交使用远端现有签名文件作为合并过渡，推送后的受保护发布工作流会重新签署最终索引和全部资源。
+正式发布时两端同目录提供 `repository.json.sig` 以及索引引用的 `devices/`、`models/` 和 `canvases/` 文件。GitHub 是权威源，Gitee 只做相同提交的镜像；客户端以内置公钥验证签名，不因地址不同而建立不同信任根。当前开发提交已包含受保护发布工作流签署的索引与资源签名；资源变更推送后该工作流会重新签署。
 
 ## 发布要求
 

@@ -10,16 +10,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 INDEX_PATH = ROOT / "repository.json"
-RESOURCE_DIRECTORIES = {
-    "device": "devices",
-    "rgb-model": "models",
-    "canvas": "canvases",
-}
-RESOURCE_SUFFIXES = {
-    "device": ".mgdevice.json",
-    "rgb-model": ".mgmodel.json",
-    "canvas": ".mgcanvas.json",
-}
+
+
+def load_signer():
+    path = ROOT / "scripts" / "sign_repository.py"
+    spec = importlib.util.spec_from_file_location("sign_repository", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# 目录与后缀以签名脚本为唯一 owner：契约与校验共用一份来源，避免两侧漂移。
+_signer = load_signer()
+RESOURCE_DIRECTORIES = _signer.RESOURCE_DIRECTORIES
+RESOURCE_SUFFIXES = _signer.RESOURCE_SUFFIXES
 RESOURCE_FILES = {
     "device": {
         "devices/vmax-320x960.mgdevice.json": "device-vmax-320x960",
@@ -55,14 +59,6 @@ EXPECTED_EFFECT_PARAMETERS = {
     "wave": {"color", "periodSeconds", "wavelength", "speed"},
     "rainbowRise": {"centerX", "centerY", "spacing", "speed", "reverse", "periodSeconds"},
 }
-
-
-def load_signer():
-    path = ROOT / "scripts" / "sign_repository.py"
-    spec = importlib.util.spec_from_file_location("sign_repository", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 class RepositoryResourceTests(unittest.TestCase):
