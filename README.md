@@ -32,7 +32,7 @@ devices/               # .mgdevice.json 设备 Profile
 models/                # .mgmodel.json RGB LED 模型
 canvases/              # .mgcanvas.json 统一 Canvas
 licenses/              # 资源的许可证说明
-repository.json.sig    # 正式发布时生成，当前开发提交不包含
+repository.json.sig    # 签名索引，由发布工作流生成并提交；不要手工编辑
 ```
 
 ## 签名发布
