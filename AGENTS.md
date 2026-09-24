@@ -27,9 +27,10 @@
 - 私钥存放在 GitHub Actions secret `OFFICIAL_REPOSITORY_SIGNING_KEY_PEM`，只在
   `publish.yml` 中以 `umask 077` 写入 `$RUNNER_TEMP` 并在退出时擦除。**不得**把私钥
   或其副本放进仓库、issue、日志或提交信息。
-- push 到 `main` 会触发 `publish.yml` 重新签名并推送。因此对 `main` 的普通文档提交
-  也会让签名工作流真实运行一次；签名是幂等的（测试已断言重签后字节相同），但改动
-  `main` 前要知道这一点。
+- push 到 `main` 且改动命中 `publish.yml` 的 `paths` 过滤（`repository.json`、
+  `devices/**`、`models/**`、`canvases/**`、`scripts/sign_repository.py`、该 workflow 自身）
+  时会触发重新签名并推送；只改 `AGENTS.md`、`README.md`、`.gitattributes` 等文档不会触发。
+  改动命中过滤时要知道签名工作流会真实运行一次——签名是幂等的（测试已断言重签后字节相同）。
 - `repository.json.sig` 是 Base64 文本；`.gitattributes` 声明为 `-text`，避免 CRLF
   重写产生与 blob 不同的字节。
 
