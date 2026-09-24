@@ -20,3 +20,7 @@ staging/
 private/
 *.key
 *.pem
+
+# Local environment
+.env
+.env.*
