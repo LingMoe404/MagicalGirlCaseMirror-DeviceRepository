@@ -8,6 +8,13 @@
 
 主项目：`https://github.com/LingMoe404/MagicalGirlCaseMirror`
 
+## 作用域与加载边界
+
+本文件是**仓库根** guidance，适用于整棵目录树；本仓库**没有**目录级 guidance，因此不存在
+更近作用域覆盖的问题。本文件不作用于主仓库——两个仓库各自独立，消费端行为由主仓库自己的
+`AGENTS.md` 与 `docs/interop/repository-resource-contract.md` 定义。环境级（用户级）配置不
+由本文件声明。
+
 ## 目录约定
 
 - `devices/`：`*.mgdevice.json` 设备 Profile。
@@ -60,6 +67,13 @@ python scripts/sign_repository.py --verify-release --public-key <公钥文件>
 
 **已知缺口（不要假装已覆盖）**：两个 workflow（`publish.yml`、`mirror.yml`）都**不运行**
 测试套件；`--verify-release` 是唯一被 README 记载的入口。测试目前只能在本地运行。
+
+## 修正回写
+
+用户或实机验证纠正了一条稳定规则时，把它**回写**到本文件或 `licenses/CONTENT-POLICY.md`，
+不要在会话里记住就算了。规则变更后的完整流程是：改文档 → 改资源或脚本 → 重算 SHA-256 →
+重签 → 运行 `python -m unittest discover -s tests -v` 确认结构、路径、哈希与签名仍自洽 →
+在提交信息中写明这次回写。若同一规则在两处出现，先指定唯一 owner，另一处改为指针。
 
 ## Code Review Rules
 
